@@ -1,71 +1,16 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
-import re
-
-"""1. DOWNLOAD THE DATASET IKEA"""
-df = pd.read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-11-03/ikea.csv')
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.impute import KNNImputer
+from scipy.stats import pearsonr
+from cleaning import df_cleaned
 
 """2. MAKE EXPLORATORY DATA ANALYSIS, INCLUDING DESCRIPTIVE STATISTICS AND VISUALIZATIONS.
 DESCRIBE RESULTS."""
-
-# 2.1 Cleaning data.
-# 2.1.1 Droping duplicates (orientation to 'item_id), deleting irrelevant columns and normalizing categories to most common.
-print(len(df) - len(df['item_id'].unique()))  # There is some duplicates of item_ids
-counted_ids = df['item_id'].value_counts()
-duplicates = counted_ids[counted_ids.values != 1]
-duplicated_ids = duplicates.index.tolist()
-df_duplicates = pd.DataFrame()
-df_cleaned = df
-df_variables_difference = pd.DataFrame()
-
-for item_id in duplicated_ids:
-    df_cleaned = df_cleaned[df_cleaned['item_id'] != item_id]
-    df_items = df[df['item_id'] == item_id]
-    var_difference = dict()
-    most_common_category = ''
-
-    for column in df_items.columns.tolist():  # create difference table between items with the same item_id
-        if df_items[column].nunique() > 1:
-            var_difference[column] = [1]
-        else:
-            var_difference[column] = [0]
-
-    for index, row in df_items.iterrows():
-        if len(df[df['category'] == row['category']]) > len(df[df['category'] == most_common_category]):
-            most_common_category = row['category']
-        df_items.loc[:, ['category']] = most_common_category  # assign most common category to duplicates
-
-    df_variables_difference = pd.concat([df_variables_difference, pd.DataFrame(var_difference)])
-    df_duplicates = pd.concat([df_duplicates, df_items], axis='index')
-
-# print(df_variables_difference)
-"""As we can see, product items with the same item_id have the difference only in Categories.
-It means that most likely there was mistake of people responsible for accounting of products.
-They classified the same product to different categories. Maybe there is some need to standardize
-categories in the company."""
-
-df_duplicates = df_duplicates.drop_duplicates(subset=['item_id'], keep='first')  # drop duplicates of products
-df_cleaned = pd.concat([df_cleaned, df_duplicates], axis='index')
-df_cleaned = df_cleaned.drop(columns=['link', 'short_description'])
-"""It seems there is some sense to replace the category values in duplicates with the most common values.
-As a result we have dataset with unique product items and most relevant category values."""
-
-# 2.1.2 Normalizing old price values
-
-def normalize_price(price):
-    norm_price = 0
-    if ',' in price:
-        price = price.replace(',', '')
-    if re.search(r'\d+', price) is not None:
-        norm_price = re.search(r'\d+', price)[0]
-    return norm_price
-
-df_cleaned['old_price'] = df_cleaned['old_price'].apply(normalize_price)
-
-# 2.2 Descriptive analysis
+"""2.2 Descriptive analysis"""
 PLOT_COLORS = ['green', 'red', 'yellow', 'black', 'orange']
 
 def create_barplot(df_arg, df_column, amount_of_values, colors):
@@ -77,7 +22,52 @@ def create_barplot(df_arg, df_column, amount_of_values, colors):
     plt.ylabel(f'Amount of items in column "{df_column}"'.upper())
     plt.show()
 
-create_barplot(df_cleaned, 'category', 5, PLOT_COLORS[0:5])
-create_barplot(df_cleaned, 'sellable_online', 2, PLOT_COLORS[0:2])
-create_barplot(df_cleaned, 'other_colors', 2, PLOT_COLORS[-4::-1])
+# create_barplot(df_cleaned, 'category', 5, PLOT_COLORS[0:5])
+# create_barplot(df_cleaned, 'sellable_online', 2, PLOT_COLORS[0:2])
+# create_barplot(df_cleaned, 'other_colors', 2, PLOT_COLORS[-4::-1])
+
+print(len(df_cleaned['depth'].dropna())/len(df_cleaned['depth']))  # about 62 % of availability
+print(len(df_cleaned['height'].dropna())/len(df_cleaned['height']))  # about 75 % of availability
+print(len(df_cleaned['width'].dropna())/len(df_cleaned['width']))  # about 85 % of availability
+""" Despite that percentage of availability for depth is quite small (62%) and imputation
+without losing of accuracy of overall data distribution is less likely there is some sense 
+to consider product volume (height * width * depth) to estimate for instance 
+if quantity of materials required to produce this product affects its price."""
+
+# old_price_availability = len(df_cleaned[df_cleaned['old_price'] != 0])/len(df_cleaned) # about 19 percent of old price availability
+# df_with_old_price = df_cleaned[df_cleaned['old_price'] != 0]
+#
+# df_with_old_price['discount'] = (df_with_old_price['old_price'].astype(float) -
+#                                  df_with_old_price['price'].astype(float)) / df_with_old_price['old_price'].astype(float)
+# avg_discount = df_with_old_price.groupby(['category'])['discount'].mean()
+# avg_discount = avg_discount.sort_values(ascending=False)
+# print(avg_discount)
+# plt.bar(avg_discount.head(5).index, avg_discount.head(5).values, color=PLOT_COLORS)  # categories with the largest discount
+# plt.xlabel('categories with the biggest discount'.upper())
+# plt.ylabel('average category discount'.upper())
+# plt.show()
+
+
+"""3. BASED ON EDA AND COMMON SENSE CHOSE 2 HYPOTHESIS WHICH YOU'D LIKE TO TEST/ANALYZE.
+FOR EACH HYPOTHESIS DECLARE NULL-HYPOTHESIS AND ALTERNATIVE HYPOTHESES, DEVELOP TESTS TO CHECK THEM.
+DESCRIBE RESULTS.
+"""
+"""3.1 HYPOTHESIS ONE: Size(volume) of product affects its price"""
+"""3.1.1 Value imputation"""
+df_volume = df_cleaned[['depth', 'height', 'width']]
+imputer = KNNImputer(n_neighbors=7)  # There are several categories with amount of products equals 7 and less
+predicted_size_parameters = imputer.fit_transform(df_volume)
+
+""" 3.1.2 Calculation of product sizes(volume) and finding correlation"""
+product_volumes = [sublist[0] * sublist[1] * sublist[2] for sublist in predicted_size_parameters]
+print(pearsonr(df_cleaned['price'].tolist(), product_volumes))
+df_new = pd.DataFrame({'volume': product_volumes, 'price': df_cleaned['price'].tolist()})
+sns.lmplot(x="volume", y="price", data=df_new)
+plt.show()
+"""The correlation coefficient is about 0.72, obviously there is some (not very strong) correlation
+bet product size(volume) and its price."""
+
+
+
+
 
