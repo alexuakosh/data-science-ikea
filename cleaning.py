@@ -13,7 +13,7 @@ DESCRIBE RESULTS."""
 """2.1 Cleaning data"""
 """2.1.1 Dropping duplicates (orientation to 'item_id), deleting irrelevant columns,
 normalizing categories to most common, and grouping products by categories"""
-print(len(df) - len(df['item_id'].unique()))  # There is some duplicates of item_ids
+print(len(df) - len(df['item_id'].unique()))  # There are some duplicates of item_ids
 counted_ids = df['item_id'].value_counts()
 duplicates = counted_ids[counted_ids.values != 1]
 duplicated_ids = duplicates.index.tolist()
@@ -41,7 +41,9 @@ for item_id in duplicated_ids:
     df_variables_difference = pd.concat([df_variables_difference, pd.DataFrame(var_difference)])
     df_duplicates = pd.concat([df_duplicates, df_items], axis='index')
 
-# print(df_variables_difference)
+print('Difference table between items with the same item_id by columns (1 - has difference, 0 - no difference):')
+print(df_variables_difference)
+print('--------------------------------------------------------------------------------------')
 """As we can see, product items with the same item_id have the difference only in Categories.
 It means that most likely there was mistake of people responsible for accounting of products.
 They classified the same product to different categories. Maybe there is some need to standardize
