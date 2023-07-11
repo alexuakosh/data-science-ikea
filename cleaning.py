@@ -43,7 +43,7 @@ for item_id in duplicated_ids:
 
 print('Difference table between items with the same item_id by columns (1 - has difference, 0 - no difference):')
 print(df_variables_difference)
-print('--------------------------------------------------------------------------------------')
+print('=====================================================================================')
 """As we can see, product items with the same item_id have the difference only in Categories.
 It means that most likely there was mistake of people responsible for accounting of products.
 They classified the same product to different categories. Maybe there is some need to standardize

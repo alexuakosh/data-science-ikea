@@ -1,17 +1,16 @@
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
 from sklearn.impute import KNNImputer
 from scipy.stats import pearsonr
+import matplotlib.pyplot as plt
 from cleaning import df_cleaned
+from ml_model import create_model
 
 """2. MAKE EXPLORATORY DATA ANALYSIS, INCLUDING DESCRIPTIVE STATISTICS AND VISUALIZATIONS.
 DESCRIBE RESULTS."""
 """2.2 Descriptive analysis"""
 PLOT_COLORS = ['green', 'red', 'yellow', 'black', 'orange']
+
 
 def create_barplot(df_arg, df_column, amount_of_values, colors):
     column_count = df_arg[df_column].value_counts()
@@ -22,32 +21,35 @@ def create_barplot(df_arg, df_column, amount_of_values, colors):
     plt.ylabel(f'Amount of items in column "{df_column}"'.upper())
     plt.show()
 
+
 create_barplot(df_cleaned, 'category', 5, PLOT_COLORS[0:5])
 create_barplot(df_cleaned, 'sellable_online', 2, PLOT_COLORS[0:2])
 create_barplot(df_cleaned, 'other_colors', 2, PLOT_COLORS[-4::-1])
 
 print('depth availability:')
-print(len(df_cleaned['depth'].dropna())/len(df_cleaned['depth']))  # about 62 % of depth availability
+print(len(df_cleaned['depth'].dropna()) / len(df_cleaned['depth']))  # about 62 % of depth availability
 print('height availability:')
-print(len(df_cleaned['height'].dropna())/len(df_cleaned['height']))  # about 75 % of  height availability
+print(len(df_cleaned['height'].dropna()) / len(df_cleaned['height']))  # about 75 % of  height availability
 print('width availability:')
-print(len(df_cleaned['width'].dropna())/len(df_cleaned['width']))  # about 85 % of width availability
-print('--------------------------------------------------------------------------------------')
+print(len(df_cleaned['width'].dropna()) / len(df_cleaned['width']))  # about 85 % of width availability
+print('====================================================================================')
 """ Despite that percentage of availability for depth is quite small (62%) and imputation
 without losing of accuracy of overall data distribution is less likely there is some sense 
 to consider product volume (height * width * depth) to estimate for instance 
 if quantity of materials required to produce this product affects its price."""
 
-old_price_availability = len(df_cleaned[df_cleaned['old_price'] != 0])/len(df_cleaned) # about 19 percent of old price availability
+old_price_availability = len(df_cleaned[df_cleaned['old_price'] != 0]) / len(
+    df_cleaned)  # about 19 percent of old price availability
 df_with_old_price = df_cleaned[df_cleaned['old_price'] != 0]
 
 df_with_old_price['discount'] = (df_with_old_price['old_price'].astype(float) -
-                                 df_with_old_price['price'].astype(float)) / df_with_old_price['old_price'].astype(float)
+                                 df_with_old_price['price'].astype(float)) / df_with_old_price['old_price'].astype(
+    float)
 avg_discount = df_with_old_price.groupby(['category'])['discount'].mean()
 avg_discount = avg_discount.sort_values(ascending=False)
 print('Product price discounts (old_price - price) by category:')
 print(avg_discount)
-print('--------------------------------------------------------------------------------------')
+print('===============================================================================')
 plt.bar(avg_discount.head(5).index, avg_discount.head(5).values, color=PLOT_COLORS)  # categories with the largest discount
 plt.xlabel('categories with the biggest discount'.upper())
 plt.ylabel('average category discount'.upper())
@@ -69,13 +71,12 @@ predicted_size_parameters = imputer.fit_transform(df_volume)
 product_volumes = [sublist[0] * sublist[1] * sublist[2] for sublist in predicted_size_parameters]
 print("Correlation coefficient between product size(volume) and its price: ")
 print(pearsonr(df_cleaned['price'].tolist(), product_volumes))
-print('--------------------------------------------------------------------------------------')
-df_new = pd.DataFrame({'volume': product_volumes, 'price': df_cleaned['price'].tolist()})
-sns.lmplot(x="volume", y="price", data=df_new)
+print('=============================================================================')
+df_volumes = pd.DataFrame({'volume': product_volumes, 'price': df_cleaned['price'].tolist()})
+sns.lmplot(x="volume", y="price", data=df_volumes)
 plt.show()
 """The correlation coefficient is about 0.72, obviously there is some (not very strong) correlation
 bet product size(volume) and its price."""
-
 
 """3.2 NULL-HYPOTHESIS TWO: Availability of additional colors affects its price. Alternatively - 
 availability of additional color doesn't affect prices."""
@@ -84,11 +85,13 @@ availability of additional color doesn't affect prices."""
 Alternatively - number of designers doesn't affect prices."""
 categories = set(df_cleaned['category'].tolist())
 
+
 def define_designer_type(row):
     if '/' in row:
         return 'Group'
     else:
         return 'Individual'
+
 
 df_cleaned['designer_type'] = df_cleaned['designer'].apply(define_designer_type)
 
@@ -112,10 +115,23 @@ additional colors. We cannot say definitely that additional colors affect prices
 3.3 Influence of group or individual designers to the prices are also not so obvious but maybe group of
 designers in some cases (maybe in particular categories of products) increases prices.
 
-There is NO sense to research if prices of products that sellable online differ from products that are
+P.S. There is NO sense to research if prices of products that sellable online differ from products that are
 not sellable online considering that there are to few products that are not sellable online and we
 cannot form relevant samples."""
 
+"""4. TEACH THE MODEL TO PREDICT PRICE.
+ - DEFINE WHICH COLUMNS SHOULD NOT BE INCLUDED TO THE MODEL AND WHY.
+ - CREATE THE PIPELINE FOR CLEANING AND TEACHING MODEL AND ESTIMATING MODEL PERFORMANCE,
+ INCLUDING (IF NECESSARY) SUCH STEPS AS IMPUTATION OF MISSING VALUES AND NORMALIZATION.
+ - SUGGEST METHODS FOR INCREASING OF MODEL PERFORMANCE. DESCRIBE RESULTS."""
+
+create_model(df_cleaned)  # creates and presents model described in file ml_model.py
+"""4.2 Overall model performance is better when using Random Forest Regression. Model score is approx. 0.8
+It would be definitely better if we had more relevant data to analyze, first of all it would be great
+if we had cost prices of products, or at least information that could point on it 
+(materials, information about man hours of production, marketing costs regarding to the specific
+products, etc.)"""
 
 
-
+"""THE END"""
+"""ДОЗВОЛЯЮ ПОДІЛИТИСЬ СВОЄЮ РОБОТОЮ, ЯКЩО ЩО"""
