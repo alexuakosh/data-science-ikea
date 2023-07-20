@@ -4,7 +4,7 @@ from sklearn.impute import KNNImputer
 from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 from cleaning import df_cleaned
-from ml_model import create_model
+from ml_model import Regressors
 
 """2. MAKE EXPLORATORY DATA ANALYSIS, INCLUDING DESCRIPTIVE STATISTICS AND VISUALIZATIONS.
 DESCRIBE RESULTS."""
@@ -125,13 +125,12 @@ cannot form relevant samples."""
  INCLUDING (IF NECESSARY) SUCH STEPS AS IMPUTATION OF MISSING VALUES AND NORMALIZATION.
  - SUGGEST METHODS FOR INCREASING OF MODEL PERFORMANCE. DESCRIBE RESULTS."""
 
-create_model(df_cleaned)  # creates and presents model described in file ml_model.py
+regressors = Regressors(df_cleaned)
+regressors.train()
+# creates and presents model described in file ml_model.py
 """4.2 Overall model performance is better when using Random Forest Regression. Model score is approx. 0.8
 It would be definitely better if we had more relevant data to analyze, first of all it would be great
 if we had cost prices of products, or at least information that could point on it 
 (materials, information about man hours of production, marketing costs regarding to the specific
 products, etc.)"""
 
-
-"""THE END"""
-"""ДОЗВОЛЯЮ ПОДІЛИТИСЬ СВОЄЮ РОБОТОЮ, ЯКЩО ЩО"""
