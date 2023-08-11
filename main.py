@@ -42,7 +42,7 @@ old_price_availability = len(df_cleaned[df_cleaned['old_price'] != 0]) / len(
     df_cleaned)  # about 19 percent of old price availability
 df_with_old_price = df_cleaned[df_cleaned['old_price'] != 0]
 
-df_with_old_price['discount'] = (df_with_old_price['old_price'].astype(float) -
+df_with_old_price.loc[:, ['discount']] = (df_with_old_price['old_price'].astype(float) -
                                  df_with_old_price['price'].astype(float)) / df_with_old_price['old_price'].astype(
     float)
 avg_discount = df_with_old_price.groupby(['category'])['discount'].mean()
